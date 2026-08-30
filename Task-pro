@@ -1,0 +1,82 @@
+name: Build APK
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+      
+      - name: Create package.json
+        run: |
+          echo '{
+            "name": "task-planner-pro",
+            "version": "2.0.0",
+            "main": "node_modules/expo/AppEntry.js",
+            "scripts": {
+              "start": "expo start",
+              "android": "expo start --android",
+              "build": "eas build --platform android"
+            },
+            "dependencies": {
+              "expo": "~50.0.0",
+              "react": "18.2.0",
+              "react-native": "0.73.6",
+              "@react-navigation/native": "^6.1.11",
+              "@react-navigation/native-stack": "^6.9.18",
+              "@react-navigation/bottom-tabs": "^6.5.11",
+              "@react-native-async-storage/async-storage": "^1.21.0",
+              "@expo/vector-icons": "^13.0.0",
+              "react-native-screens": "~3.27.0",
+              "react-native-safe-area-context": "4.8.2"
+            }
+          }' > package.json
+      
+      - name: Create app.json
+        run: |
+          echo '{
+            "expo": {
+              "name": "Task Planner Pro",
+              "slug": "task-planner-pro",
+              "version": "2.0.0",
+              "orientation": "portrait",
+              "android": {
+                "adaptiveIcon": {
+                  "backgroundColor": "#ffffff"
+                },
+                "package": "com.taskplanner.app"
+              }
+            }
+          }' > app.json
+      
+      - name: Create App.js
+        run: |
+          mkdir -p screens components utils
+          echo 'import React from "react"; import { View, Text } from "react-native"; export default function App() { return <View style={{flex:1, justifyContent:"center", alignItems:"center"}}><Text>Task Planner Pro!</Text></View>; }' > App.js
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Prebuild project
+        run: npx expo@latest prebuild --clean --yarn --no-install
+      
+      - name: Build APK
+        run: cd android && ./gradlew assembleRelease && cd ..
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
